@@ -1,5 +1,8 @@
 package com.parabank.automation.config;
 
+import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Properties;
 
 public final class ConfigManager {
@@ -13,8 +16,8 @@ public final class ConfigManager {
 		frameworkProperties = PropertyReader
 				.loadProperties(FrameworkConstants.CONFIG_CLASSPATH_ROOT + FrameworkConstants.FRAMEWORK_CONFIG_FILE);
 
-		environmentProperties = PropertyReader.loadProperties(
-				FrameworkConstants.CONFIG_CLASSPATH_ROOT + EnvironmentManager.getEnvironmentConfigFileName());
+		environmentProperties = PropertyReader
+				.loadProperties(FrameworkConstants.CONFIG_CLASSPATH_ROOT + EnvironmentManager.getEnvironmentConfigFileName());
 	}
 
 	public static ConfigManager getInstance() {
@@ -73,16 +76,124 @@ public final class ConfigManager {
 
 	public String getExecutionMode() {
 		String executionMode = getProperty("execution.mode");
-		return (executionMode == null || executionMode.trim().isEmpty()) ? "local" : executionMode.trim().toLowerCase();
+		return (executionMode == null || executionMode.trim().isEmpty()) ? FrameworkConstants.EXECUTION_MODE_LOCAL
+				: executionMode.trim().toLowerCase();
 	}
 
 	public boolean isRemoteExecution() {
-		return "remote".equalsIgnoreCase(getExecutionMode());
+		return FrameworkConstants.EXECUTION_MODE_REMOTE.equalsIgnoreCase(getExecutionMode());
+	}
+
+	public String getRemoteProvider() {
+		String remoteProvider = getProperty("remote.provider");
+		return (remoteProvider == null || remoteProvider.trim().isEmpty())
+				? FrameworkConstants.REMOTE_PROVIDER_SELENIUM_GRID
+				: remoteProvider.trim().toLowerCase();
+	}
+
+	public boolean isSeleniumGridExecution() {
+		return isRemoteExecution() && FrameworkConstants.REMOTE_PROVIDER_SELENIUM_GRID.equalsIgnoreCase(getRemoteProvider());
+	}
+
+	public boolean isBrowserStackExecution() {
+		return isRemoteExecution() && FrameworkConstants.REMOTE_PROVIDER_BROWSERSTACK.equalsIgnoreCase(getRemoteProvider());
 	}
 
 	public String getSeleniumRemoteUrl() {
 		String remoteUrl = getProperty("selenium.remote.url");
-		return (remoteUrl == null || remoteUrl.trim().isEmpty()) ? "http://localhost:4444/wd/hub" : remoteUrl.trim();
+		return (remoteUrl == null || remoteUrl.trim().isEmpty()) ? FrameworkConstants.DEFAULT_SELENIUM_REMOTE_URL
+				: remoteUrl.trim();
+	}
+
+	public String getBrowserStackHubUrl() {
+		String hubUrl = getProperty("browserstack.hub.url");
+		return (hubUrl == null || hubUrl.trim().isEmpty()) ? FrameworkConstants.DEFAULT_BROWSERSTACK_HUB_URL
+				: hubUrl.trim();
+	}
+
+	public String getBrowserStackUsername() {
+		return SensitiveDataResolver.resolveCredentialValue(getProperty("browserstack.username"),
+				"BrowserStack username");
+	}
+
+	public String getBrowserStackAccessKey() {
+		return SensitiveDataResolver.resolveCredentialValue(getProperty("browserstack.access.key"),
+				"BrowserStack access key");
+	}
+
+	public String getBrowserStackRemoteUrl() {
+		URI hubUri = URI.create(getBrowserStackHubUrl());
+		String encodedUsername = URLEncoder.encode(getBrowserStackUsername(), StandardCharsets.UTF_8);
+		String encodedAccessKey = URLEncoder.encode(getBrowserStackAccessKey(), StandardCharsets.UTF_8);
+		String userInfo = encodedUsername + ":" + encodedAccessKey;
+
+		URI authenticatedUri = URI.create(hubUri.getScheme() + "://" + userInfo + "@"
+				+ hubUri.getAuthority().replaceFirst("^.*@", "") + hubUri.getPath());
+
+		return authenticatedUri.toString();
+	}
+
+	public String getBrowserStackOs() {
+		String os = getProperty("browserstack.os");
+		return (os == null || os.trim().isEmpty()) ? FrameworkConstants.DEFAULT_BROWSERSTACK_OS : os.trim();
+	}
+
+	public String getBrowserStackOsVersion() {
+		String osVersion = getProperty("browserstack.os.version");
+		return (osVersion == null || osVersion.trim().isEmpty()) ? FrameworkConstants.DEFAULT_BROWSERSTACK_OS_VERSION
+				: osVersion.trim();
+	}
+
+	public String getBrowserStackBrowserVersion() {
+		String browserVersion = getProperty("browserstack.browser.version");
+		return (browserVersion == null || browserVersion.trim().isEmpty())
+				? FrameworkConstants.DEFAULT_BROWSERSTACK_BROWSER_VERSION
+				: browserVersion.trim();
+	}
+
+	public String getBrowserStackProjectName() {
+		String projectName = getProperty("browserstack.project.name");
+		return (projectName == null || projectName.trim().isEmpty())
+				? FrameworkConstants.DEFAULT_BROWSERSTACK_PROJECT_NAME
+				: projectName.trim();
+	}
+
+	public String getBrowserStackBuildName() {
+		String buildName = getProperty("browserstack.build.name");
+		return (buildName == null || buildName.trim().isEmpty()) ? FrameworkConstants.DEFAULT_BROWSERSTACK_BUILD_NAME
+				: buildName.trim();
+	}
+
+	public String getBrowserStackSessionName() {
+		String sessionName = getProperty("browserstack.session.name");
+		return (sessionName == null || sessionName.trim().isEmpty())
+				? FrameworkConstants.DEFAULT_BROWSERSTACK_SESSION_NAME
+				: sessionName.trim();
+	}
+
+	public boolean isBrowserStackLocalEnabled() {
+		String value = getProperty("browserstack.local");
+		return (value == null || value.trim().isEmpty()) ? FrameworkConstants.DEFAULT_BROWSERSTACK_LOCAL
+				: Boolean.parseBoolean(value.trim());
+	}
+
+	public boolean isBrowserStackDebugEnabled() {
+		String value = getProperty("browserstack.debug");
+		return (value == null || value.trim().isEmpty()) ? FrameworkConstants.DEFAULT_BROWSERSTACK_DEBUG
+				: Boolean.parseBoolean(value.trim());
+	}
+
+	public boolean isBrowserStackNetworkLogsEnabled() {
+		String value = getProperty("browserstack.network.logs");
+		return (value == null || value.trim().isEmpty()) ? FrameworkConstants.DEFAULT_BROWSERSTACK_NETWORK_LOGS
+				: Boolean.parseBoolean(value.trim());
+	}
+
+	public String getBrowserStackConsoleLogs() {
+		String consoleLogs = getProperty("browserstack.console.logs");
+		return (consoleLogs == null || consoleLogs.trim().isEmpty())
+				? FrameworkConstants.DEFAULT_BROWSERSTACK_CONSOLE_LOGS
+				: consoleLogs.trim();
 	}
 
 	public int getImplicitWait() {
