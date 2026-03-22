@@ -26,6 +26,25 @@ public final class FrameworkConstants {
 	public static final String FIREFOX = "firefox";
 	public static final String EDGE = "edge";
 
+	public static final String EXECUTION_MODE_LOCAL = "local";
+	public static final String EXECUTION_MODE_REMOTE = "remote";
+
+	public static final String REMOTE_PROVIDER_SELENIUM_GRID = "selenium-grid";
+	public static final String REMOTE_PROVIDER_BROWSERSTACK = "browserstack";
+
+	public static final String DEFAULT_SELENIUM_REMOTE_URL = "http://localhost:4444";
+	public static final String DEFAULT_BROWSERSTACK_HUB_URL = "https://hub-cloud.browserstack.com/wd/hub";
+	public static final String DEFAULT_BROWSERSTACK_OS = "Windows";
+	public static final String DEFAULT_BROWSERSTACK_OS_VERSION = "11";
+	public static final String DEFAULT_BROWSERSTACK_BROWSER_VERSION = "latest";
+	public static final String DEFAULT_BROWSERSTACK_PROJECT_NAME = "Parabank Automation Framework";
+	public static final String DEFAULT_BROWSERSTACK_BUILD_NAME = "Local BrowserStack Build";
+	public static final String DEFAULT_BROWSERSTACK_SESSION_NAME = "Parabank Automation Session";
+	public static final String DEFAULT_BROWSERSTACK_CONSOLE_LOGS = "errors";
+	public static final boolean DEFAULT_BROWSERSTACK_LOCAL = false;
+	public static final boolean DEFAULT_BROWSERSTACK_DEBUG = true;
+	public static final boolean DEFAULT_BROWSERSTACK_NETWORK_LOGS = true;
+
 	public static final int DEFAULT_EXPLICIT_WAIT = 20;
 	public static final int DEFAULT_IMPLICIT_WAIT = 5;
 	public static final int DEFAULT_PAGE_LOAD_TIMEOUT = 30;
