@@ -37,9 +37,23 @@ public final class StartupValidator {
 		validateUri("api.base.url", configManager.getApiBaseUrl());
 
 		if (configManager.isRemoteExecution()) {
-			validateUri("selenium.remote.url", configManager.getSeleniumRemoteUrl());
-			validateEndpointReachability("Selenium Grid", buildSeleniumStatusUrl(configManager.getSeleniumRemoteUrl()),
-					configManager.getStartupValidationTimeoutSeconds());
+			validateRemoteProvider(configManager.getRemoteProvider());
+
+			if (configManager.isSeleniumGridExecution()) {
+				validateUri("selenium.remote.url", configManager.getSeleniumRemoteUrl());
+				validateEndpointReachability("Selenium Grid",
+						buildSeleniumStatusUrl(configManager.getSeleniumRemoteUrl()),
+						configManager.getStartupValidationTimeoutSeconds());
+			}
+
+			if (configManager.isBrowserStackExecution()) {
+				validateUri("browserstack.hub.url", configManager.getBrowserStackHubUrl());
+				validateNonBlank("browserstack.username", configManager.getBrowserStackUsername());
+				validateNonBlank("browserstack.access.key", configManager.getBrowserStackAccessKey());
+				validateNonBlank("browserstack.os", configManager.getBrowserStackOs());
+				validateNonBlank("browserstack.os.version", configManager.getBrowserStackOsVersion());
+				validateNonBlank("browserstack.browser.version", configManager.getBrowserStackBrowserVersion());
+			}
 		}
 
 		validatePositive("implicit.wait", configManager.getImplicitWait());
@@ -94,12 +108,28 @@ public final class StartupValidator {
 		}
 
 		String normalizedExecutionMode = executionMode.trim().toLowerCase();
-		if (!"local".equals(normalizedExecutionMode) && !"remote".equals(normalizedExecutionMode)) {
+		if (!FrameworkConstants.EXECUTION_MODE_LOCAL.equals(normalizedExecutionMode)
+				&& !FrameworkConstants.EXECUTION_MODE_REMOTE.equals(normalizedExecutionMode)) {
 			throw new StartupValidationException(
 					"Unsupported execution mode: " + executionMode + ". Supported values: local, remote.");
 		}
 
 		LOGGER.info("Validated execution mode: {}", normalizedExecutionMode);
+	}
+
+	private static void validateRemoteProvider(String remoteProvider) {
+		if (remoteProvider == null || remoteProvider.trim().isEmpty()) {
+			throw new StartupValidationException("Remote provider configuration is missing.");
+		}
+
+		String normalizedRemoteProvider = remoteProvider.trim().toLowerCase();
+		if (!FrameworkConstants.REMOTE_PROVIDER_SELENIUM_GRID.equals(normalizedRemoteProvider)
+				&& !FrameworkConstants.REMOTE_PROVIDER_BROWSERSTACK.equals(normalizedRemoteProvider)) {
+			throw new StartupValidationException("Unsupported remote provider: " + remoteProvider
+					+ ". Supported values: selenium-grid, browserstack.");
+		}
+
+		LOGGER.info("Validated remote provider: {}", normalizedRemoteProvider);
 	}
 
 	private static void validateUri(String propertyName, String uriValue) {
@@ -118,6 +148,14 @@ public final class StartupValidator {
 		}
 
 		LOGGER.info("Validated URI for property: {}", propertyName);
+	}
+
+	private static void validateNonBlank(String propertyName, String value) {
+		if (value == null || value.trim().isEmpty()) {
+			throw new StartupValidationException("Required configuration is missing: " + propertyName);
+		}
+
+		LOGGER.info("Validated non-blank configuration: {}", propertyName);
 	}
 
 	private static void validatePositive(String propertyName, int value) {
