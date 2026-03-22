@@ -448,6 +448,19 @@ jobs:
 
           mvn "${MVN_ARGS[@]}"
 
+      - name: Debug generated test-output structure
+        if: always()
+        shell: bash
+        run: |
+          echo "test-output directories:"
+          find test-output -maxdepth 4 -type d | sort || true
+          echo
+          echo "test-output files:"
+          find test-output -maxdepth 6 -type f | sort || true
+          echo
+          echo "Extent report files only:"
+          find test-output/reports -maxdepth 3 -type f | sort || true
+
       - name: Upload Selenium Grid log
         if: ${{ always() && needs.prepare.outputs.remote_provider == 'selenium-grid' }}
         uses: actions/upload-artifact@v4
@@ -490,6 +503,15 @@ jobs:
           pattern: framework-reports-${{ needs.prepare.outputs.suite }}-*
           path: downloaded-framework-reports
           merge-multiple: false
+
+      - name: Debug downloaded framework report structure
+        shell: bash
+        run: |
+          echo "Downloaded artifact directories:"
+          find downloaded-framework-reports -maxdepth 6 -type d | sort || true
+          echo
+          echo "Downloaded files:"
+          find downloaded-framework-reports -maxdepth 8 -type f | sort || true
 
       - name: Build static Pages site for Extent reports
         shell: bash
