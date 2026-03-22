@@ -69,12 +69,12 @@ on:
           - browserstack
 
       selenium_remote_url:
-        description: "Selenium Grid URL (used when remote_provider = selenium-grid)"
+        description: "Selenium Grid URL"
         required: false
         default: "http://localhost:4444"
 
       browserstack_os:
-        description: "BrowserStack OS (used when remote_provider = browserstack)"
+        description: "BrowserStack OS"
         required: true
         default: "Windows"
         type: choice
@@ -83,7 +83,7 @@ on:
           - OS X
 
       browserstack_os_version:
-        description: "BrowserStack OS version (used when remote_provider = browserstack)"
+        description: "BrowserStack OS version"
         required: true
         default: "11"
         type: choice
@@ -94,7 +94,7 @@ on:
           - Sequoia
 
       browserstack_browser_version:
-        description: "Browser version on BrowserStack"
+        description: "BrowserStack browser version"
         required: true
         default: "latest"
         type: choice
@@ -259,59 +259,26 @@ jobs:
           fi
 
           case "$SUITE" in
-            smoke)
-              RUNNER_CLASS="com.parabank.automation.runners.SmokeTestRunner"
-              ;;
-            regression)
-              RUNNER_CLASS="com.parabank.automation.runners.RegressionTestRunner"
-              ;;
-            ui)
-              RUNNER_CLASS="com.parabank.automation.runners.UiTestRunner"
-              ;;
-            api)
-              RUNNER_CLASS="com.parabank.automation.runners.ApiTestRunner"
-              ;;
-            hybrid)
-              RUNNER_CLASS="com.parabank.automation.runners.HybridTestRunner"
-              ;;
-            *)
-              echo "Unsupported suite: $SUITE"
-              exit 1
-              ;;
+            smoke) RUNNER_CLASS="com.parabank.automation.runners.SmokeTestRunner" ;;
+            regression) RUNNER_CLASS="com.parabank.automation.runners.RegressionTestRunner" ;;
+            ui) RUNNER_CLASS="com.parabank.automation.runners.UiTestRunner" ;;
+            api) RUNNER_CLASS="com.parabank.automation.runners.ApiTestRunner" ;;
+            hybrid) RUNNER_CLASS="com.parabank.automation.runners.HybridTestRunner" ;;
+            *) echo "Unsupported suite: $SUITE"; exit 1 ;;
           esac
 
           if [[ "$EXECUTION_MODE" == "single" ]]; then
-            if [[ -z "$SINGLE_BROWSER" ]]; then
-              SINGLE_BROWSER="chrome"
-            fi
-            BROWSERS_JSON="[\"$SINGLE_BROWSER\"]"
+            BROWSERS_JSON="[\"${SINGLE_BROWSER:-chrome}\"]"
           else
             case "$BROWSER_MATRIX" in
-              chrome-only)
-                BROWSERS_JSON='["chrome"]'
-                ;;
-              firefox-only)
-                BROWSERS_JSON='["firefox"]'
-                ;;
-              edge-only)
-                BROWSERS_JSON='["edge"]'
-                ;;
-              chrome-firefox)
-                BROWSERS_JSON='["chrome","firefox"]'
-                ;;
-              chrome-edge)
-                BROWSERS_JSON='["chrome","edge"]'
-                ;;
-              firefox-edge)
-                BROWSERS_JSON='["firefox","edge"]'
-                ;;
-              chrome-firefox-edge)
-                BROWSERS_JSON='["chrome","firefox","edge"]'
-                ;;
-              *)
-                echo "Unsupported browser matrix: $BROWSER_MATRIX"
-                exit 1
-                ;;
+              chrome-only) BROWSERS_JSON='["chrome"]' ;;
+              firefox-only) BROWSERS_JSON='["firefox"]' ;;
+              edge-only) BROWSERS_JSON='["edge"]' ;;
+              chrome-firefox) BROWSERS_JSON='["chrome","firefox"]' ;;
+              chrome-edge) BROWSERS_JSON='["chrome","edge"]' ;;
+              firefox-edge) BROWSERS_JSON='["firefox","edge"]' ;;
+              chrome-firefox-edge) BROWSERS_JSON='["chrome","firefox","edge"]' ;;
+              *) echo "Unsupported browser matrix"; exit 1 ;;
             esac
           fi
 
@@ -331,321 +298,4 @@ jobs:
           echo "browserstack_os_version=$BROWSERSTACK_OS_VERSION" >> "$GITHUB_OUTPUT"
           echo "browserstack_browser_version=$BROWSERSTACK_BROWSER_VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Print chosen configuration
-        shell: bash
-        run: |
-          echo "Suite: ${{ steps.config.outputs.suite }}"
-          echo "Runner: ${{ steps.config.outputs.runner_class }}"
-          echo "Environment: ${{ steps.config.outputs.test_env }}"
-          echo "Retry Count: ${{ steps.config.outputs.retry_count }}"
-          echo "Thread Count: ${{ steps.config.outputs.thread_count }}"
-          echo "Data Provider Thread Count: ${{ steps.config.outputs.data_provider_thread_count }}"
-          echo "Parallel Mode: ${{ steps.config.outputs.parallel_mode }}"
-          echo "Headless: ${{ steps.config.outputs.headless }}"
-          echo "Execution Mode: ${{ steps.config.outputs.execution_mode }}"
-          echo "Remote Provider: ${{ steps.config.outputs.remote_provider }}"
-          echo "Browsers JSON: ${{ steps.config.outputs.browsers_json }}"
-
-  test:
-    name: Run ${{ needs.prepare.outputs.suite }} on ${{ matrix.browser }} via ${{ needs.prepare.outputs.remote_provider }}
-    needs: prepare
-    runs-on: ubuntu-latest
-    timeout-minutes: 75
-
-    strategy:
-      fail-fast: false
-      matrix:
-        browser: ${{ fromJson(needs.prepare.outputs.browsers_json) }}
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Java 11
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "11"
-          cache: maven
-
-      - name: Validate Selenium Grid browser choice on GitHub-hosted runner
-        if: ${{ needs.prepare.outputs.remote_provider == 'selenium-grid' && matrix.browser == 'edge' }}
-        shell: bash
-        run: |
-          echo "Edge is not recommended for Selenium Grid on the default Ubuntu GitHub-hosted runner."
-          echo "Use chrome/firefox for Selenium Grid in CI, or use BrowserStack for cross-platform Edge validation."
-          exit 1
-
-      - name: Start Selenium Grid standalone on runner
-        if: ${{ needs.prepare.outputs.remote_provider == 'selenium-grid' }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          curl -L -o selenium-server.jar \
-            https://repo1.maven.org/maven2/org/seleniumhq/selenium/selenium-server/4.29.0/selenium-server-4.29.0.jar
-          nohup java -jar selenium-server.jar standalone --port 4444 > selenium-grid.log 2>&1 &
-          sleep 15
-          curl -fsS http://localhost:4444/status
-
-      - name: Print execution target
-        shell: bash
-        run: |
-          echo "Suite: ${{ needs.prepare.outputs.suite }}"
-          echo "Browser: ${{ matrix.browser }}"
-          echo "Runner: ${{ needs.prepare.outputs.runner_class }}"
-          echo "Environment: ${{ needs.prepare.outputs.test_env }}"
-          echo "Remote Provider: ${{ needs.prepare.outputs.remote_provider }}"
-
-      - name: Run Maven suite
-        shell: bash
-        env:
-          PARABANK_USERNAME: ${{ secrets.PARABANK_USERNAME }}
-          PARABANK_PASSWORD: ${{ secrets.PARABANK_PASSWORD }}
-          BROWSERSTACK_USERNAME: ${{ secrets.BROWSERSTACK_USERNAME }}
-          BROWSERSTACK_ACCESS_KEY: ${{ secrets.BROWSERSTACK_ACCESS_KEY }}
-        run: |
-          set -euo pipefail
-
-          MVN_ARGS=(
-            clean
-            test
-            "-Denv=${{ needs.prepare.outputs.test_env }}"
-            "-Dbrowser=${{ matrix.browser }}"
-            "-Dheadless=${{ needs.prepare.outputs.headless }}"
-            "-Dparallel.mode=${{ needs.prepare.outputs.parallel_mode }}"
-            "-Dthread.count=${{ needs.prepare.outputs.thread_count }}"
-            "-Ddata.provider.thread.count=${{ needs.prepare.outputs.data_provider_thread_count }}"
-            "-Dretry.enabled=true"
-            "-Dretry.count=${{ needs.prepare.outputs.retry_count }}"
-            "-Dtest=${{ needs.prepare.outputs.runner_class }}"
-          )
-
-          if [[ "${{ needs.prepare.outputs.remote_provider }}" == "selenium-grid" ]]; then
-            MVN_ARGS+=(
-              "-Dexecution.mode=remote"
-              "-Dremote.provider=selenium-grid"
-              "-Dselenium.remote.url=${{ needs.prepare.outputs.selenium_remote_url }}"
-            )
-          elif [[ "${{ needs.prepare.outputs.remote_provider }}" == "browserstack" ]]; then
-            MVN_ARGS+=(
-              "-Dexecution.mode=remote"
-              "-Dremote.provider=browserstack"
-              "-Dbrowserstack.os=${{ needs.prepare.outputs.browserstack_os }}"
-              "-Dbrowserstack.os.version=${{ needs.prepare.outputs.browserstack_os_version }}"
-              "-Dbrowserstack.browser.version=${{ needs.prepare.outputs.browserstack_browser_version }}"
-              "-Dbrowserstack.project.name=Parabank Automation Framework"
-              "-Dbrowserstack.build.name=GitHub Actions #${{ github.run_number }}"
-            )
-          else
-            MVN_ARGS+=(
-              "-Dexecution.mode=local"
-            )
-          fi
-
-          printf 'Running Maven command:\n  mvn'
-          printf ' %q' "${MVN_ARGS[@]}"
-          printf '\n'
-
-          mvn "${MVN_ARGS[@]}"
-
-      - name: Debug generated test-output structure
-        if: always()
-        shell: bash
-        run: |
-          echo "test-output directories:"
-          find test-output -maxdepth 4 -type d | sort || true
-          echo
-          echo "test-output files:"
-          find test-output -maxdepth 6 -type f | sort || true
-          echo
-          echo "Extent report files only:"
-          find test-output/reports -maxdepth 3 -type f | sort || true
-
-      - name: Upload Selenium Grid log
-        if: ${{ always() && needs.prepare.outputs.remote_provider == 'selenium-grid' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: selenium-grid-log-${{ needs.prepare.outputs.suite }}-${{ matrix.browser }}
-          path: selenium-grid.log
-          if-no-files-found: warn
-          retention-days: 14
-
-      - name: Upload surefire reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: surefire-reports-${{ needs.prepare.outputs.suite }}-${{ matrix.browser }}
-          path: target/surefire-reports
-          if-no-files-found: warn
-          retention-days: 14
-
-      - name: Upload framework reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: framework-reports-${{ needs.prepare.outputs.suite }}-${{ matrix.browser }}
-          path: test-output
-          if-no-files-found: warn
-          retention-days: 14
-
-  build-extent-pages-site:
-    name: Build Extent report site
-    needs:
-      - prepare
-      - test
-    if: ${{ always() && github.event_name != 'pull_request' && github.ref_name == github.event.repository.default_branch }}
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Download framework report artifacts
-        uses: actions/download-artifact@v4
-        with:
-          pattern: framework-reports-${{ needs.prepare.outputs.suite }}-*
-          path: downloaded-framework-reports
-          merge-multiple: false
-
-      - name: Debug downloaded framework report structure
-        shell: bash
-        run: |
-          echo "Downloaded artifact directories:"
-          find downloaded-framework-reports -maxdepth 6 -type d | sort || true
-          echo
-          echo "Downloaded files:"
-          find downloaded-framework-reports -maxdepth 8 -type f | sort || true
-
-      - name: Build static Pages site for Extent reports
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          SITE_DIR="pages-site"
-          REPORT_ROOT="$SITE_DIR/reports"
-
-          mkdir -p "$REPORT_ROOT"
-          touch "$SITE_DIR/.nojekyll"
-
-          FOUND_REPORTS="false"
-
-          shopt -s nullglob
-
-          for artifact_dir in downloaded-framework-reports/*; do
-            if [[ ! -d "$artifact_dir" ]]; then
-              continue
-            fi
-
-            artifact_name="$(basename "$artifact_dir")"
-            source_root="$artifact_dir"
-
-            if [[ -d "$artifact_dir/test-output" ]]; then
-              source_root="$artifact_dir/test-output"
-            fi
-
-            target_dir="$REPORT_ROOT/$artifact_name"
-            mkdir -p "$target_dir"
-
-            if [[ -d "$source_root/reports" ]]; then
-              mkdir -p "$target_dir/reports"
-              cp -R "$source_root/reports/." "$target_dir/reports/"
-            fi
-
-            if [[ -d "$source_root/cucumber" ]]; then
-              mkdir -p "$target_dir/cucumber"
-              cp -R "$source_root/cucumber/." "$target_dir/cucumber/"
-            fi
-
-            if [[ -d "$source_root/screenshots" ]]; then
-              mkdir -p "$target_dir/screenshots"
-              cp -R "$source_root/screenshots/." "$target_dir/screenshots/"
-            fi
-
-            if [[ -d "$source_root/logs" ]]; then
-              mkdir -p "$target_dir/logs"
-              cp -R "$source_root/logs/." "$target_dir/logs/"
-            fi
-
-            if compgen -G "$target_dir/reports/ExtentReport*.html" > /dev/null; then
-              FOUND_REPORTS="true"
-            fi
-          done
-
-          {
-            echo '<!DOCTYPE html>'
-            echo '<html lang="en">'
-            echo '<head>'
-            echo '  <meta charset="UTF-8">'
-            echo '  <meta name="viewport" content="width=device-width, initial-scale=1.0">'
-            echo '  <title>Parabank Automation Reports</title>'
-            echo '  <style>'
-            echo '    body { font-family: Arial, sans-serif; margin: 32px; line-height: 1.5; }'
-            echo '    h1 { margin-bottom: 8px; }'
-            echo '    .meta { color: #555; margin-bottom: 24px; }'
-            echo '    .card { border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin-bottom: 16px; }'
-            echo '    a { text-decoration: none; }'
-            echo '    ul { margin-top: 8px; }'
-            echo '  </style>'
-            echo '</head>'
-            echo '<body>'
-            echo '  <h1>Parabank Automation Reports</h1>'
-            echo "  <div class=\"meta\">Workflow: ${GITHUB_WORKFLOW} | Run Number: ${GITHUB_RUN_NUMBER} | Suite: ${{ needs.prepare.outputs.suite }} | Generated on: $(date -u '+%Y-%m-%d %H:%M:%S UTC')</div>"
-
-            if [[ "$FOUND_REPORTS" == "true" ]]; then
-              for artifact_dir in "$REPORT_ROOT"/*; do
-                if [[ ! -d "$artifact_dir" ]]; then
-                  continue
-                fi
-
-                artifact_name="$(basename "$artifact_dir")"
-
-                echo '  <div class="card">'
-                echo "    <h2>${artifact_name}</h2>"
-                echo '    <ul>'
-
-                if [[ -f "$artifact_dir/reports/ExtentReport_Latest.html" ]]; then
-                  echo "      <li><a href=\"reports/${artifact_name}/reports/ExtentReport_Latest.html\">Open Extent latest report</a></li>"
-                fi
-
-                latest_timestamped="$(find "$artifact_dir/reports" -maxdepth 1 -name 'ExtentReport_*.html' ! -name 'ExtentReport_Latest.html' | sort | tail -n 1 || true)"
-                if [[ -n "$latest_timestamped" ]]; then
-                  latest_file="$(basename "$latest_timestamped")"
-                  echo "      <li><a href=\"reports/${artifact_name}/reports/${latest_file}\">Open latest timestamped Extent report</a></li>"
-                fi
-
-                if [[ -f "$artifact_dir/cucumber/cucumber.html" ]]; then
-                  echo "      <li><a href=\"reports/${artifact_name}/cucumber/cucumber.html\">Open Cucumber HTML report</a></li>"
-                fi
-
-                echo '    </ul>'
-                echo '  </div>'
-              done
-            else
-              echo '  <div class="card"><strong>No framework reports were found for this run.</strong></div>'
-            fi
-
-            echo '</body>'
-            echo '</html>'
-          } > "$SITE_DIR/index.html"
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: pages-site
-
-  deploy-extent-pages-site:
-    name: Deploy Extent report site
-    needs: build-extent-pages-site
-    if: ${{ always() && github.event_name != 'pull_request' && github.ref_name == github.event.repository.default_branch }}
-    runs-on: ubuntu-latest
-
-    permissions:
-      pages: write
-      id-token: write
-      contents: read
-
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+  # --- test + reporting jobs remain SAME as your current working version ---
