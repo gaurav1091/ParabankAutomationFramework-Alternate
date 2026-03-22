@@ -406,30 +406,47 @@ jobs:
         run: |
           set -euo pipefail
 
-          EXECUTION_ARGS="-Dexecution.mode=local"
+          MVN_ARGS=(
+            clean
+            test
+            "-Denv=${{ needs.prepare.outputs.test_env }}"
+            "-Dbrowser=${{ matrix.browser }}"
+            "-Dheadless=${{ needs.prepare.outputs.headless }}"
+            "-Dparallel.mode=${{ needs.prepare.outputs.parallel_mode }}"
+            "-Dthread.count=${{ needs.prepare.outputs.thread_count }}"
+            "-Ddata.provider.thread.count=${{ needs.prepare.outputs.data_provider_thread_count }}"
+            "-Dretry.enabled=true"
+            "-Dretry.count=${{ needs.prepare.outputs.retry_count }}"
+            "-Dtest=${{ needs.prepare.outputs.runner_class }}"
+          )
 
           if [[ "${{ needs.prepare.outputs.remote_provider }}" == "selenium-grid" ]]; then
-            EXECUTION_ARGS="-Dexecution.mode=remote -Dremote.provider=selenium-grid -Dselenium.remote.url=${{ needs.prepare.outputs.selenium_remote_url }}"
+            MVN_ARGS+=(
+              "-Dexecution.mode=remote"
+              "-Dremote.provider=selenium-grid"
+              "-Dselenium.remote.url=${{ needs.prepare.outputs.selenium_remote_url }}"
+            )
           elif [[ "${{ needs.prepare.outputs.remote_provider }}" == "browserstack" ]]; then
-            EXECUTION_ARGS="-Dexecution.mode=remote -Dremote.provider=browserstack \
-              -Dbrowserstack.os='${{ needs.prepare.outputs.browserstack_os }}' \
-              -Dbrowserstack.os.version='${{ needs.prepare.outputs.browserstack_os_version }}' \
-              -Dbrowserstack.browser.version='${{ needs.prepare.outputs.browserstack_browser_version }}' \
-              -Dbrowserstack.project.name='Parabank Automation Framework' \
-              -Dbrowserstack.build.name='GitHub Actions #${{ github.run_number }}'"
+            MVN_ARGS+=(
+              "-Dexecution.mode=remote"
+              "-Dremote.provider=browserstack"
+              "-Dbrowserstack.os=${{ needs.prepare.outputs.browserstack_os }}"
+              "-Dbrowserstack.os.version=${{ needs.prepare.outputs.browserstack_os_version }}"
+              "-Dbrowserstack.browser.version=${{ needs.prepare.outputs.browserstack_browser_version }}"
+              "-Dbrowserstack.project.name=Parabank Automation Framework"
+              "-Dbrowserstack.build.name=GitHub Actions #${{ github.run_number }}"
+            )
+          else
+            MVN_ARGS+=(
+              "-Dexecution.mode=local"
+            )
           fi
 
-          mvn clean test \
-            -Denv=${{ needs.prepare.outputs.test_env }} \
-            -Dbrowser=${{ matrix.browser }} \
-            -Dheadless=${{ needs.prepare.outputs.headless }} \
-            -Dparallel.mode=${{ needs.prepare.outputs.parallel_mode }} \
-            -Dthread.count=${{ needs.prepare.outputs.thread_count }} \
-            -Ddata.provider.thread.count=${{ needs.prepare.outputs.data_provider_thread_count }} \
-            -Dretry.enabled=true \
-            -Dretry.count=${{ needs.prepare.outputs.retry_count }} \
-            -Dtest=${{ needs.prepare.outputs.runner_class }} \
-            ${EXECUTION_ARGS}
+          printf 'Running Maven command:\n  mvn'
+          printf ' %q' "${MVN_ARGS[@]}"
+          printf '\n'
+
+          mvn "${MVN_ARGS[@]}"
 
       - name: Upload Selenium Grid log
         if: ${{ always() && needs.prepare.outputs.remote_provider == 'selenium-grid' }}
