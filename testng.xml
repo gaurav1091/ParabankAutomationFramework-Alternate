@@ -17,5 +17,6 @@
 			<class name="com.parabank.automation.runners.SmokeTestRunner" />
 		</classes>
 	</test>
+	
 
 </suite>
