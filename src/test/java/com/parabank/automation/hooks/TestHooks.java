@@ -7,6 +7,7 @@ import com.parabank.automation.driver.DriverFactory;
 import com.parabank.automation.driver.DriverManager;
 import com.parabank.automation.reports.ExtentManager;
 import com.parabank.automation.reports.ExtentTestManager;
+import com.parabank.automation.utils.BrowserStackUtils;
 import com.parabank.automation.utils.FailureDiagnosticsUtils;
 import io.cucumber.java.After;
 import io.cucumber.java.Before;
@@ -33,6 +34,7 @@ public class TestHooks {
 		ExtentTestManager.info("Environment: " + EnvironmentManager.getCurrentEnvironment());
 		ExtentTestManager.info("Base URL: " + ConfigManager.getInstance().getBaseUrl());
 		ExtentTestManager.info("Execution Mode: " + ConfigManager.getInstance().getExecutionMode());
+		ExtentTestManager.info("Remote Provider: " + ConfigManager.getInstance().getRemoteProvider());
 		ExtentTestManager
 				.info("Scenario Execution Type: " + ScenarioExecutionSupport.getExecutionModeDescription(scenario));
 		ExtentTestManager.info("Browser Required For Scenario: " + ScenarioExecutionSupport.requiresBrowser(scenario));
@@ -54,6 +56,11 @@ public class TestHooks {
 		}
 
 		WebDriver driver = DriverFactory.initializeDriver();
+
+		if (ConfigManager.getInstance().isBrowserStackExecution()) {
+			BrowserStackUtils.setSessionName(scenario.getName());
+		}
+
 		driver.get(ConfigManager.getInstance().getBaseUrl());
 		ExtentTestManager.info("Application launched successfully.");
 	}
@@ -66,6 +73,7 @@ public class TestHooks {
 			ExtentTestManager.fail("Scenario failed: " + scenario.getName());
 
 			if (DriverManager.hasDriver()) {
+				BrowserStackUtils.setSessionStatus(false, "Scenario failed: " + scenario.getName());
 				FailureDiagnosticsUtils.logUiFailureDetails(scenario.getName());
 				ExtentTestManager.captureAndAttachFailureScreenshot("scenario_failure_" + sanitizedScenarioName);
 			} else {
@@ -76,6 +84,7 @@ public class TestHooks {
 			ExtentTestManager.pass("Scenario passed: " + scenario.getName());
 
 			if (DriverManager.hasDriver()) {
+				BrowserStackUtils.setSessionStatus(true, "Scenario passed: " + scenario.getName());
 				ExtentTestManager.captureAndAttachPassScreenshot("scenario_pass_" + sanitizedScenarioName);
 			}
 		}
@@ -89,11 +98,6 @@ public class TestHooks {
 			ExtentTestManager.info("No browser teardown required for this scenario.");
 		}
 
-		/*
-		 * Important for CI artifact publishing: Flush after each scenario so the Extent
-		 * HTML is physically written before GitHub Actions uploads test-output as an
-		 * artifact.
-		 */
 		ExtentManager.flushReport();
 		ExtentTestManager.unload();
 	}
