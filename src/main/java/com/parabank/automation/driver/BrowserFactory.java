@@ -42,25 +42,23 @@ public final class BrowserFactory {
 	}
 
 	private static WebDriver createRemoteDriver(BrowserType browserType) {
-		String remoteUrl = ConfigManager.getInstance().getSeleniumRemoteUrl();
+		ConfigManager configManager = ConfigManager.getInstance();
 
 		try {
-			switch (browserType) {
-			case CHROME:
-				return new RemoteWebDriver(new URL(remoteUrl), BrowserOptionsFactory.getChromeOptions());
-
-			case FIREFOX:
-				return new RemoteWebDriver(new URL(remoteUrl), BrowserOptionsFactory.getFirefoxOptions());
-
-			case EDGE:
-				return new RemoteWebDriver(new URL(remoteUrl), BrowserOptionsFactory.getEdgeOptions());
-
-			default:
-				throw new DriverInitializationException(
-						"Unsupported browser type for remote execution: " + browserType);
+			if (configManager.isBrowserStackExecution()) {
+				return new RemoteWebDriver(new URL(configManager.getBrowserStackRemoteUrl()),
+						RemoteCapabilitiesFactory.getBrowserStackCapabilities(browserType));
 			}
+
+			if (configManager.isSeleniumGridExecution()) {
+				return new RemoteWebDriver(new URL(configManager.getSeleniumRemoteUrl()),
+						RemoteCapabilitiesFactory.getSeleniumGridCapabilities(browserType));
+			}
+
+			throw new DriverInitializationException(
+					"Unsupported remote provider configured: " + configManager.getRemoteProvider());
 		} catch (MalformedURLException exception) {
-			throw new DriverInitializationException("Invalid Selenium remote URL: " + remoteUrl, exception);
+			throw new DriverInitializationException("Invalid remote URL configured.", exception);
 		}
 	}
 }
