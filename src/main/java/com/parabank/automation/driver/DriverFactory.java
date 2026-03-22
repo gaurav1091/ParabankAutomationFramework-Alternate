@@ -48,7 +48,7 @@ public final class DriverFactory {
 		driver.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(configManager.getPageLoadTimeout()));
 		driver.manage().timeouts().scriptTimeout(Duration.ofSeconds(configManager.getScriptTimeout()));
 
-		if (!configManager.isHeadless()) {
+		if (!configManager.isHeadless() && !configManager.isBrowserStackExecution()) {
 			driver.manage().window().maximize();
 		}
 	}
