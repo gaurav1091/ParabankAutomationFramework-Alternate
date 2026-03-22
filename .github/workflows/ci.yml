@@ -58,6 +58,51 @@ on:
           - firefox-edge
           - chrome-firefox-edge
 
+      remote_provider:
+        description: "Execution backend"
+        required: true
+        default: "local"
+        type: choice
+        options:
+          - local
+          - selenium-grid
+          - browserstack
+
+      selenium_remote_url:
+        description: "Selenium Grid URL (used when remote_provider = selenium-grid)"
+        required: false
+        default: "http://localhost:4444"
+
+      browserstack_os:
+        description: "BrowserStack OS (used when remote_provider = browserstack)"
+        required: true
+        default: "Windows"
+        type: choice
+        options:
+          - Windows
+          - OS X
+
+      browserstack_os_version:
+        description: "BrowserStack OS version (used when remote_provider = browserstack)"
+        required: true
+        default: "11"
+        type: choice
+        options:
+          - "11"
+          - "10"
+          - Sonoma
+          - Sequoia
+
+      browserstack_browser_version:
+        description: "Browser version on BrowserStack"
+        required: true
+        default: "latest"
+        type: choice
+        options:
+          - latest
+          - latest-1
+          - latest-2
+
       env:
         description: "Environment"
         required: true
@@ -154,6 +199,11 @@ jobs:
       headless: ${{ steps.config.outputs.headless }}
       execution_mode: ${{ steps.config.outputs.execution_mode }}
       browsers_json: ${{ steps.config.outputs.browsers_json }}
+      remote_provider: ${{ steps.config.outputs.remote_provider }}
+      selenium_remote_url: ${{ steps.config.outputs.selenium_remote_url }}
+      browserstack_os: ${{ steps.config.outputs.browserstack_os }}
+      browserstack_os_version: ${{ steps.config.outputs.browserstack_os_version }}
+      browserstack_browser_version: ${{ steps.config.outputs.browserstack_browser_version }}
 
     steps:
       - name: Determine suite configuration
@@ -164,6 +214,11 @@ jobs:
             SUITE="regression"
             EXECUTION_MODE="matrix"
             BROWSER_MATRIX="chrome-firefox"
+            REMOTE_PROVIDER="local"
+            SELENIUM_REMOTE_URL="http://localhost:4444"
+            BROWSERSTACK_OS="Windows"
+            BROWSERSTACK_OS_VERSION="11"
+            BROWSERSTACK_BROWSER_VERSION="latest"
             TEST_ENV="qa"
             RETRY_COUNT="2"
             THREAD_COUNT="5"
@@ -175,6 +230,11 @@ jobs:
             EXECUTION_MODE="${{ github.event.inputs.execution_mode }}"
             SINGLE_BROWSER="${{ github.event.inputs.browser }}"
             BROWSER_MATRIX="${{ github.event.inputs.browser_matrix }}"
+            REMOTE_PROVIDER="${{ github.event.inputs.remote_provider }}"
+            SELENIUM_REMOTE_URL="${{ github.event.inputs.selenium_remote_url }}"
+            BROWSERSTACK_OS="${{ github.event.inputs.browserstack_os }}"
+            BROWSERSTACK_OS_VERSION="${{ github.event.inputs.browserstack_os_version }}"
+            BROWSERSTACK_BROWSER_VERSION="${{ github.event.inputs.browserstack_browser_version }}"
             TEST_ENV="${{ github.event.inputs.env }}"
             RETRY_COUNT="${{ github.event.inputs.retry_count }}"
             THREAD_COUNT="${{ github.event.inputs.thread_count }}"
@@ -185,6 +245,11 @@ jobs:
             SUITE="smoke"
             EXECUTION_MODE="matrix"
             BROWSER_MATRIX="chrome-firefox"
+            REMOTE_PROVIDER="local"
+            SELENIUM_REMOTE_URL="http://localhost:4444"
+            BROWSERSTACK_OS="Windows"
+            BROWSERSTACK_OS_VERSION="11"
+            BROWSERSTACK_BROWSER_VERSION="latest"
             TEST_ENV="qa"
             RETRY_COUNT="2"
             THREAD_COUNT="5"
@@ -260,6 +325,11 @@ jobs:
           echo "headless=$HEADLESS" >> "$GITHUB_OUTPUT"
           echo "execution_mode=$EXECUTION_MODE" >> "$GITHUB_OUTPUT"
           echo "browsers_json=$BROWSERS_JSON" >> "$GITHUB_OUTPUT"
+          echo "remote_provider=$REMOTE_PROVIDER" >> "$GITHUB_OUTPUT"
+          echo "selenium_remote_url=$SELENIUM_REMOTE_URL" >> "$GITHUB_OUTPUT"
+          echo "browserstack_os=$BROWSERSTACK_OS" >> "$GITHUB_OUTPUT"
+          echo "browserstack_os_version=$BROWSERSTACK_OS_VERSION" >> "$GITHUB_OUTPUT"
+          echo "browserstack_browser_version=$BROWSERSTACK_BROWSER_VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Print chosen configuration
         shell: bash
@@ -273,13 +343,14 @@ jobs:
           echo "Parallel Mode: ${{ steps.config.outputs.parallel_mode }}"
           echo "Headless: ${{ steps.config.outputs.headless }}"
           echo "Execution Mode: ${{ steps.config.outputs.execution_mode }}"
+          echo "Remote Provider: ${{ steps.config.outputs.remote_provider }}"
           echo "Browsers JSON: ${{ steps.config.outputs.browsers_json }}"
 
   test:
-    name: Run ${{ needs.prepare.outputs.suite }} on ${{ matrix.browser }}
+    name: Run ${{ needs.prepare.outputs.suite }} on ${{ matrix.browser }} via ${{ needs.prepare.outputs.remote_provider }}
     needs: prepare
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 75
 
     strategy:
       fail-fast: false
@@ -297,6 +368,25 @@ jobs:
           java-version: "11"
           cache: maven
 
+      - name: Validate Selenium Grid browser choice on GitHub-hosted runner
+        if: ${{ needs.prepare.outputs.remote_provider == 'selenium-grid' && matrix.browser == 'edge' }}
+        shell: bash
+        run: |
+          echo "Edge is not recommended for Selenium Grid on the default Ubuntu GitHub-hosted runner."
+          echo "Use chrome/firefox for Selenium Grid in CI, or use BrowserStack for cross-platform Edge validation."
+          exit 1
+
+      - name: Start Selenium Grid standalone on runner
+        if: ${{ needs.prepare.outputs.remote_provider == 'selenium-grid' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -L -o selenium-server.jar \
+            https://repo1.maven.org/maven2/org/seleniumhq/selenium/selenium-server/4.29.0/selenium-server-4.29.0.jar
+          nohup java -jar selenium-server.jar standalone --port 4444 > selenium-grid.log 2>&1 &
+          sleep 15
+          curl -fsS http://localhost:4444/status
+
       - name: Print execution target
         shell: bash
         run: |
@@ -304,13 +394,31 @@ jobs:
           echo "Browser: ${{ matrix.browser }}"
           echo "Runner: ${{ needs.prepare.outputs.runner_class }}"
           echo "Environment: ${{ needs.prepare.outputs.test_env }}"
+          echo "Remote Provider: ${{ needs.prepare.outputs.remote_provider }}"
 
       - name: Run Maven suite
         shell: bash
         env:
           PARABANK_USERNAME: ${{ secrets.PARABANK_USERNAME }}
           PARABANK_PASSWORD: ${{ secrets.PARABANK_PASSWORD }}
+          BROWSERSTACK_USERNAME: ${{ secrets.BROWSERSTACK_USERNAME }}
+          BROWSERSTACK_ACCESS_KEY: ${{ secrets.BROWSERSTACK_ACCESS_KEY }}
         run: |
+          set -euo pipefail
+
+          EXECUTION_ARGS="-Dexecution.mode=local"
+
+          if [[ "${{ needs.prepare.outputs.remote_provider }}" == "selenium-grid" ]]; then
+            EXECUTION_ARGS="-Dexecution.mode=remote -Dremote.provider=selenium-grid -Dselenium.remote.url=${{ needs.prepare.outputs.selenium_remote_url }}"
+          elif [[ "${{ needs.prepare.outputs.remote_provider }}" == "browserstack" ]]; then
+            EXECUTION_ARGS="-Dexecution.mode=remote -Dremote.provider=browserstack \
+              -Dbrowserstack.os='${{ needs.prepare.outputs.browserstack_os }}' \
+              -Dbrowserstack.os.version='${{ needs.prepare.outputs.browserstack_os_version }}' \
+              -Dbrowserstack.browser.version='${{ needs.prepare.outputs.browserstack_browser_version }}' \
+              -Dbrowserstack.project.name='Parabank Automation Framework' \
+              -Dbrowserstack.build.name='GitHub Actions #${{ github.run_number }}'"
+          fi
+
           mvn clean test \
             -Denv=${{ needs.prepare.outputs.test_env }} \
             -Dbrowser=${{ matrix.browser }} \
@@ -320,17 +428,17 @@ jobs:
             -Ddata.provider.thread.count=${{ needs.prepare.outputs.data_provider_thread_count }} \
             -Dretry.enabled=true \
             -Dretry.count=${{ needs.prepare.outputs.retry_count }} \
-            -Dtest=${{ needs.prepare.outputs.runner_class }}
+            -Dtest=${{ needs.prepare.outputs.runner_class }} \
+            ${EXECUTION_ARGS}
 
-      - name: Debug generated test-output structure
-        if: always()
-        shell: bash
-        run: |
-          echo "test-output directories:"
-          find test-output -maxdepth 4 -type d | sort || true
-          echo
-          echo "test-output files:"
-          find test-output -maxdepth 6 -type f | sort || true
+      - name: Upload Selenium Grid log
+        if: ${{ always() && needs.prepare.outputs.remote_provider == 'selenium-grid' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: selenium-grid-log-${{ needs.prepare.outputs.suite }}-${{ matrix.browser }}
+          path: selenium-grid.log
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Upload surefire reports
         if: always()
@@ -365,15 +473,6 @@ jobs:
           pattern: framework-reports-${{ needs.prepare.outputs.suite }}-*
           path: downloaded-framework-reports
           merge-multiple: false
-
-      - name: Debug downloaded framework report structure
-        shell: bash
-        run: |
-          echo "Downloaded artifact directories:"
-          find downloaded-framework-reports -maxdepth 6 -type d | sort || true
-          echo
-          echo "Downloaded files:"
-          find downloaded-framework-reports -maxdepth 8 -type f | sort || true
 
       - name: Build static Pages site for Extent reports
         shell: bash
