@@ -1,0 +1,8 @@
+.git
+.github
+.idea
+.settings
+target
+test-output
+.DS_Store
+*.log

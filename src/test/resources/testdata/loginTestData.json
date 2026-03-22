@@ -1,0 +1,22 @@
+[
+  {
+    "key": "validUser",
+    "username": "${PARABANK_USERNAME}",
+    "password": "${PARABANK_PASSWORD}"
+  },
+  {
+    "key": "invalidUser",
+    "username": "invalidUser",
+    "password": "invalidPass"
+  },
+  {
+    "key": "validUserWrongPassword",
+    "username": "${PARABANK_USERNAME}",
+    "password": "wrongPass"
+  },
+  {
+    "key": "wrongUserValidPassword",
+    "username": "wrongUser",
+    "password": "${PARABANK_PASSWORD}"
+  }
+]

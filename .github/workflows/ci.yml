@@ -1,0 +1,513 @@
+name: Parabank CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - develop
+  pull_request:
+    branches:
+      - main
+      - master
+      - develop
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: "Suite to run"
+        required: true
+        default: "smoke"
+        type: choice
+        options:
+          - smoke
+          - regression
+          - ui
+          - api
+          - hybrid
+
+      execution_mode:
+        description: "Execution mode"
+        required: true
+        default: "single"
+        type: choice
+        options:
+          - single
+          - matrix
+
+      browser:
+        description: "Single browser (used only when execution_mode = single)"
+        required: true
+        default: "chrome"
+        type: choice
+        options:
+          - chrome
+          - firefox
+          - edge
+
+      browser_matrix:
+        description: "Browser matrix set (used only when execution_mode = matrix)"
+        required: true
+        default: "chrome-firefox"
+        type: choice
+        options:
+          - chrome-only
+          - firefox-only
+          - edge-only
+          - chrome-firefox
+          - chrome-edge
+          - firefox-edge
+          - chrome-firefox-edge
+
+      env:
+        description: "Environment"
+        required: true
+        default: "qa"
+        type: choice
+        options:
+          - qa
+          - stage
+          - dev
+
+      retry_count:
+        description: "Retry count"
+        required: true
+        default: "2"
+        type: choice
+        options:
+          - "0"
+          - "1"
+          - "2"
+          - "3"
+
+      thread_count:
+        description: "Thread count"
+        required: true
+        default: "5"
+        type: choice
+        options:
+          - "1"
+          - "2"
+          - "3"
+          - "4"
+          - "5"
+          - "6"
+          - "7"
+          - "8"
+          - "10"
+
+      data_provider_thread_count:
+        description: "Data provider thread count"
+        required: true
+        default: "2"
+        type: choice
+        options:
+          - "1"
+          - "2"
+          - "3"
+          - "4"
+          - "5"
+
+      parallel_mode:
+        description: "Parallel mode"
+        required: true
+        default: "methods"
+        type: choice
+        options:
+          - none
+          - methods
+          - classes
+          - tests
+          - instances
+
+      headless:
+        description: "Run in headless mode"
+        required: true
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
+
+  schedule:
+    - cron: "30 3 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: parabank-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  prepare:
+    name: Prepare execution config
+    runs-on: ubuntu-latest
+
+    outputs:
+      suite: ${{ steps.config.outputs.suite }}
+      runner_class: ${{ steps.config.outputs.runner_class }}
+      test_env: ${{ steps.config.outputs.test_env }}
+      retry_count: ${{ steps.config.outputs.retry_count }}
+      thread_count: ${{ steps.config.outputs.thread_count }}
+      data_provider_thread_count: ${{ steps.config.outputs.data_provider_thread_count }}
+      parallel_mode: ${{ steps.config.outputs.parallel_mode }}
+      headless: ${{ steps.config.outputs.headless }}
+      execution_mode: ${{ steps.config.outputs.execution_mode }}
+      browsers_json: ${{ steps.config.outputs.browsers_json }}
+
+    steps:
+      - name: Determine suite configuration
+        id: config
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            SUITE="regression"
+            EXECUTION_MODE="matrix"
+            BROWSER_MATRIX="chrome-firefox"
+            TEST_ENV="qa"
+            RETRY_COUNT="2"
+            THREAD_COUNT="5"
+            DATA_PROVIDER_THREAD_COUNT="2"
+            PARALLEL_MODE="methods"
+            HEADLESS="true"
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            SUITE="${{ github.event.inputs.suite }}"
+            EXECUTION_MODE="${{ github.event.inputs.execution_mode }}"
+            SINGLE_BROWSER="${{ github.event.inputs.browser }}"
+            BROWSER_MATRIX="${{ github.event.inputs.browser_matrix }}"
+            TEST_ENV="${{ github.event.inputs.env }}"
+            RETRY_COUNT="${{ github.event.inputs.retry_count }}"
+            THREAD_COUNT="${{ github.event.inputs.thread_count }}"
+            DATA_PROVIDER_THREAD_COUNT="${{ github.event.inputs.data_provider_thread_count }}"
+            PARALLEL_MODE="${{ github.event.inputs.parallel_mode }}"
+            HEADLESS="${{ github.event.inputs.headless }}"
+          else
+            SUITE="smoke"
+            EXECUTION_MODE="matrix"
+            BROWSER_MATRIX="chrome-firefox"
+            TEST_ENV="qa"
+            RETRY_COUNT="2"
+            THREAD_COUNT="5"
+            DATA_PROVIDER_THREAD_COUNT="2"
+            PARALLEL_MODE="methods"
+            HEADLESS="true"
+          fi
+
+          case "$SUITE" in
+            smoke)
+              RUNNER_CLASS="com.parabank.automation.runners.SmokeTestRunner"
+              ;;
+            regression)
+              RUNNER_CLASS="com.parabank.automation.runners.RegressionTestRunner"
+              ;;
+            ui)
+              RUNNER_CLASS="com.parabank.automation.runners.UiTestRunner"
+              ;;
+            api)
+              RUNNER_CLASS="com.parabank.automation.runners.ApiTestRunner"
+              ;;
+            hybrid)
+              RUNNER_CLASS="com.parabank.automation.runners.HybridTestRunner"
+              ;;
+            *)
+              echo "Unsupported suite: $SUITE"
+              exit 1
+              ;;
+          esac
+
+          if [[ "$EXECUTION_MODE" == "single" ]]; then
+            if [[ -z "$SINGLE_BROWSER" ]]; then
+              SINGLE_BROWSER="chrome"
+            fi
+            BROWSERS_JSON="[\"$SINGLE_BROWSER\"]"
+          else
+            case "$BROWSER_MATRIX" in
+              chrome-only)
+                BROWSERS_JSON='["chrome"]'
+                ;;
+              firefox-only)
+                BROWSERS_JSON='["firefox"]'
+                ;;
+              edge-only)
+                BROWSERS_JSON='["edge"]'
+                ;;
+              chrome-firefox)
+                BROWSERS_JSON='["chrome","firefox"]'
+                ;;
+              chrome-edge)
+                BROWSERS_JSON='["chrome","edge"]'
+                ;;
+              firefox-edge)
+                BROWSERS_JSON='["firefox","edge"]'
+                ;;
+              chrome-firefox-edge)
+                BROWSERS_JSON='["chrome","firefox","edge"]'
+                ;;
+              *)
+                echo "Unsupported browser matrix: $BROWSER_MATRIX"
+                exit 1
+                ;;
+            esac
+          fi
+
+          echo "suite=$SUITE" >> "$GITHUB_OUTPUT"
+          echo "runner_class=$RUNNER_CLASS" >> "$GITHUB_OUTPUT"
+          echo "test_env=$TEST_ENV" >> "$GITHUB_OUTPUT"
+          echo "retry_count=$RETRY_COUNT" >> "$GITHUB_OUTPUT"
+          echo "thread_count=$THREAD_COUNT" >> "$GITHUB_OUTPUT"
+          echo "data_provider_thread_count=$DATA_PROVIDER_THREAD_COUNT" >> "$GITHUB_OUTPUT"
+          echo "parallel_mode=$PARALLEL_MODE" >> "$GITHUB_OUTPUT"
+          echo "headless=$HEADLESS" >> "$GITHUB_OUTPUT"
+          echo "execution_mode=$EXECUTION_MODE" >> "$GITHUB_OUTPUT"
+          echo "browsers_json=$BROWSERS_JSON" >> "$GITHUB_OUTPUT"
+
+      - name: Print chosen configuration
+        shell: bash
+        run: |
+          echo "Suite: ${{ steps.config.outputs.suite }}"
+          echo "Runner: ${{ steps.config.outputs.runner_class }}"
+          echo "Environment: ${{ steps.config.outputs.test_env }}"
+          echo "Retry Count: ${{ steps.config.outputs.retry_count }}"
+          echo "Thread Count: ${{ steps.config.outputs.thread_count }}"
+          echo "Data Provider Thread Count: ${{ steps.config.outputs.data_provider_thread_count }}"
+          echo "Parallel Mode: ${{ steps.config.outputs.parallel_mode }}"
+          echo "Headless: ${{ steps.config.outputs.headless }}"
+          echo "Execution Mode: ${{ steps.config.outputs.execution_mode }}"
+          echo "Browsers JSON: ${{ steps.config.outputs.browsers_json }}"
+
+  test:
+    name: Run ${{ needs.prepare.outputs.suite }} on ${{ matrix.browser }}
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: ${{ fromJson(needs.prepare.outputs.browsers_json) }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 11
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "11"
+          cache: maven
+
+      - name: Print execution target
+        shell: bash
+        run: |
+          echo "Suite: ${{ needs.prepare.outputs.suite }}"
+          echo "Browser: ${{ matrix.browser }}"
+          echo "Runner: ${{ needs.prepare.outputs.runner_class }}"
+          echo "Environment: ${{ needs.prepare.outputs.test_env }}"
+
+      - name: Run Maven suite
+        shell: bash
+        env:
+          PARABANK_USERNAME: ${{ secrets.PARABANK_USERNAME }}
+          PARABANK_PASSWORD: ${{ secrets.PARABANK_PASSWORD }}
+        run: |
+          mvn clean test \
+            -Denv=${{ needs.prepare.outputs.test_env }} \
+            -Dbrowser=${{ matrix.browser }} \
+            -Dheadless=${{ needs.prepare.outputs.headless }} \
+            -Dparallel.mode=${{ needs.prepare.outputs.parallel_mode }} \
+            -Dthread.count=${{ needs.prepare.outputs.thread_count }} \
+            -Ddata.provider.thread.count=${{ needs.prepare.outputs.data_provider_thread_count }} \
+            -Dretry.enabled=true \
+            -Dretry.count=${{ needs.prepare.outputs.retry_count }} \
+            -Dtest=${{ needs.prepare.outputs.runner_class }}
+
+      - name: Debug generated test-output structure
+        if: always()
+        shell: bash
+        run: |
+          echo "test-output directories:"
+          find test-output -maxdepth 4 -type d | sort || true
+          echo
+          echo "test-output files:"
+          find test-output -maxdepth 6 -type f | sort || true
+
+      - name: Upload surefire reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports-${{ needs.prepare.outputs.suite }}-${{ matrix.browser }}
+          path: target/surefire-reports
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload framework reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: framework-reports-${{ needs.prepare.outputs.suite }}-${{ matrix.browser }}
+          path: test-output
+          if-no-files-found: warn
+          retention-days: 14
+
+  build-extent-pages-site:
+    name: Build Extent report site
+    needs:
+      - prepare
+      - test
+    if: ${{ always() && github.event_name != 'pull_request' && github.ref_name == github.event.repository.default_branch }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download framework report artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: framework-reports-${{ needs.prepare.outputs.suite }}-*
+          path: downloaded-framework-reports
+          merge-multiple: false
+
+      - name: Debug downloaded framework report structure
+        shell: bash
+        run: |
+          echo "Downloaded artifact directories:"
+          find downloaded-framework-reports -maxdepth 6 -type d | sort || true
+          echo
+          echo "Downloaded files:"
+          find downloaded-framework-reports -maxdepth 8 -type f | sort || true
+
+      - name: Build static Pages site for Extent reports
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SITE_DIR="pages-site"
+          REPORT_ROOT="$SITE_DIR/reports"
+
+          mkdir -p "$REPORT_ROOT"
+          touch "$SITE_DIR/.nojekyll"
+
+          FOUND_REPORTS="false"
+
+          shopt -s nullglob
+
+          for artifact_dir in downloaded-framework-reports/*; do
+            if [[ ! -d "$artifact_dir" ]]; then
+              continue
+            fi
+
+            artifact_name="$(basename "$artifact_dir")"
+            source_root="$artifact_dir"
+
+            if [[ -d "$artifact_dir/test-output" ]]; then
+              source_root="$artifact_dir/test-output"
+            fi
+
+            target_dir="$REPORT_ROOT/$artifact_name"
+            mkdir -p "$target_dir"
+
+            if [[ -d "$source_root/reports" ]]; then
+              mkdir -p "$target_dir/reports"
+              cp -R "$source_root/reports/." "$target_dir/reports/"
+            fi
+
+            if [[ -d "$source_root/cucumber" ]]; then
+              mkdir -p "$target_dir/cucumber"
+              cp -R "$source_root/cucumber/." "$target_dir/cucumber/"
+            fi
+
+            if [[ -d "$source_root/screenshots" ]]; then
+              mkdir -p "$target_dir/screenshots"
+              cp -R "$source_root/screenshots/." "$target_dir/screenshots/"
+            fi
+
+            if [[ -d "$source_root/logs" ]]; then
+              mkdir -p "$target_dir/logs"
+              cp -R "$source_root/logs/." "$target_dir/logs/"
+            fi
+
+            if compgen -G "$target_dir/reports/ExtentReport*.html" > /dev/null; then
+              FOUND_REPORTS="true"
+            fi
+          done
+
+          {
+            echo '<!DOCTYPE html>'
+            echo '<html lang="en">'
+            echo '<head>'
+            echo '  <meta charset="UTF-8">'
+            echo '  <meta name="viewport" content="width=device-width, initial-scale=1.0">'
+            echo '  <title>Parabank Automation Reports</title>'
+            echo '  <style>'
+            echo '    body { font-family: Arial, sans-serif; margin: 32px; line-height: 1.5; }'
+            echo '    h1 { margin-bottom: 8px; }'
+            echo '    .meta { color: #555; margin-bottom: 24px; }'
+            echo '    .card { border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin-bottom: 16px; }'
+            echo '    a { text-decoration: none; }'
+            echo '    ul { margin-top: 8px; }'
+            echo '  </style>'
+            echo '</head>'
+            echo '<body>'
+            echo '  <h1>Parabank Automation Reports</h1>'
+            echo "  <div class=\"meta\">Workflow: ${GITHUB_WORKFLOW} | Run Number: ${GITHUB_RUN_NUMBER} | Suite: ${{ needs.prepare.outputs.suite }} | Generated on: $(date -u '+%Y-%m-%d %H:%M:%S UTC')</div>"
+
+            if [[ "$FOUND_REPORTS" == "true" ]]; then
+              for artifact_dir in "$REPORT_ROOT"/*; do
+                if [[ ! -d "$artifact_dir" ]]; then
+                  continue
+                fi
+
+                artifact_name="$(basename "$artifact_dir")"
+
+                echo '  <div class="card">'
+                echo "    <h2>${artifact_name}</h2>"
+                echo '    <ul>'
+
+                if [[ -f "$artifact_dir/reports/ExtentReport_Latest.html" ]]; then
+                  echo "      <li><a href=\"reports/${artifact_name}/reports/ExtentReport_Latest.html\">Open Extent latest report</a></li>"
+                fi
+
+                latest_timestamped="$(find "$artifact_dir/reports" -maxdepth 1 -name 'ExtentReport_*.html' ! -name 'ExtentReport_Latest.html' | sort | tail -n 1 || true)"
+                if [[ -n "$latest_timestamped" ]]; then
+                  latest_file="$(basename "$latest_timestamped")"
+                  echo "      <li><a href=\"reports/${artifact_name}/reports/${latest_file}\">Open latest timestamped Extent report</a></li>"
+                fi
+
+                if [[ -f "$artifact_dir/cucumber/cucumber.html" ]]; then
+                  echo "      <li><a href=\"reports/${artifact_name}/cucumber/cucumber.html\">Open Cucumber HTML report</a></li>"
+                fi
+
+                echo '    </ul>'
+                echo '  </div>'
+              done
+            else
+              echo '  <div class="card"><strong>No framework reports were found for this run.</strong></div>'
+            fi
+
+            echo '</body>'
+            echo '</html>'
+          } > "$SITE_DIR/index.html"
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: pages-site
+
+  deploy-extent-pages-site:
+    name: Deploy Extent report site
+    needs: build-extent-pages-site
+    if: ${{ always() && github.event_name != 'pull_request' && github.ref_name == github.event.repository.default_branch }}
+    runs-on: ubuntu-latest
+
+    permissions:
+      pages: write
+      id-token: write
+      contents: read
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,68 @@
+name: parabank-automation
+
+services:
+  selenium-chromium:
+    image: selenium/standalone-chromium:4.29.0
+    container_name: parabank-selenium-chromium
+    shm_size: 2gb
+    profiles:
+      - chromium
+
+  selenium-firefox:
+    image: selenium/standalone-firefox:4.29.0
+    container_name: parabank-selenium-firefox
+    shm_size: 2gb
+    profiles:
+      - firefox
+
+  test-runner-chromium:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: parabank-test-runner-chromium
+    profiles:
+      - chromium
+    depends_on:
+      - selenium-chromium
+    environment:
+      TEST_ENV: ${TEST_ENV:-qa}
+      BROWSER: chrome
+      EXECUTION_MODE: remote
+      SELENIUM_REMOTE_URL: http://selenium-chromium:4444/wd/hub
+      HEADLESS: ${HEADLESS:-false}
+      PARALLEL_MODE: ${PARALLEL_MODE:-none}
+      THREAD_COUNT: ${THREAD_COUNT:-1}
+      DATA_PROVIDER_THREAD_COUNT: ${DATA_PROVIDER_THREAD_COUNT:-1}
+      RETRY_ENABLED: ${RETRY_ENABLED:-true}
+      RETRY_COUNT: ${RETRY_COUNT:-1}
+      TEST_RUNNER: ${TEST_RUNNER:-com.parabank.automation.runners.SmokeTestRunner}
+      CUCUMBER_FILTER_TAGS: ${CUCUMBER_FILTER_TAGS:-}
+      CUCUMBER_FEATURES: ${CUCUMBER_FEATURES:-}
+    volumes:
+      - ./test-output/chromium:/app/test-output
+
+  test-runner-firefox:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: parabank-test-runner-firefox
+    profiles:
+      - firefox
+    depends_on:
+      - selenium-firefox
+    environment:
+      TEST_ENV: ${TEST_ENV:-qa}
+      BROWSER: firefox
+      EXECUTION_MODE: remote
+      SELENIUM_REMOTE_URL: http://selenium-firefox:4444/wd/hub
+      HEADLESS: ${HEADLESS:-false}
+      PARALLEL_MODE: ${PARALLEL_MODE:-none}
+      THREAD_COUNT: ${THREAD_COUNT:-1}
+      DATA_PROVIDER_THREAD_COUNT: ${DATA_PROVIDER_THREAD_COUNT:-1}
+      RETRY_ENABLED: ${RETRY_ENABLED:-true}
+      RETRY_COUNT: ${RETRY_COUNT:-1}
+      TEST_RUNNER: ${TEST_RUNNER:-com.parabank.automation.runners.SmokeTestRunner}
+      CUCUMBER_FILTER_TAGS: ${CUCUMBER_FILTER_TAGS:-}
+      CUCUMBER_FEATURES: ${CUCUMBER_FEATURES:-}
+    volumes:
+      - ./test-output/firefox:/app/test-output

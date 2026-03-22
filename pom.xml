@@ -1,0 +1,324 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+	<modelVersion>4.0.0</modelVersion>
+
+	<groupId>com.parabank.automation</groupId>
+	<artifactId>ParabankAutomationFramework</artifactId>
+	<version>1.0-SNAPSHOT</version>
+	<name>ParabankAutomationFramework</name>
+	<description>Enterprise Selenium Java + Cucumber + TestNG + REST Assured
+		Framework</description>
+
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+
+		<maven.compiler.source>11</maven.compiler.source>
+		<maven.compiler.target>11</maven.compiler.target>
+
+		<selenium.version>4.29.0</selenium.version>
+		<testng.version>7.10.2</testng.version>
+		<cucumber.version>7.18.1</cucumber.version>
+		<restassured.version>5.5.0</restassured.version>
+		<jackson.version>2.18.2</jackson.version>
+		<log4j.version>2.24.3</log4j.version>
+		<extentreports.version>5.1.2</extentreports.version>
+		<webdrivermanager.version>5.9.2</webdrivermanager.version>
+		<commons-io.version>2.17.0</commons-io.version>
+		<commons-lang3.version>3.17.0</commons-lang3.version>
+		<json.schema.validator.version>1.5.6</json.schema.validator.version>
+
+		<maven-surefire-plugin.version>3.2.5</maven-surefire-plugin.version>
+		<maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
+		<maven-enforcer-plugin.version>3.5.0</maven-enforcer-plugin.version>
+		<maven-checkstyle-plugin.version>3.5.0</maven-checkstyle-plugin.version>
+		<maven-pmd-plugin.version>3.24.0</maven-pmd-plugin.version>
+		<spotbugs-maven-plugin.version>4.8.6.5</spotbugs-maven-plugin.version>
+	</properties>
+
+	<dependencies>
+
+		<dependency>
+			<groupId>org.seleniumhq.selenium</groupId>
+			<artifactId>selenium-java</artifactId>
+			<version>${selenium.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>io.github.bonigarcia</groupId>
+			<artifactId>webdrivermanager</artifactId>
+			<version>${webdrivermanager.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.testng</groupId>
+			<artifactId>testng</artifactId>
+			<version>${testng.version}</version>
+			<scope>test</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>io.cucumber</groupId>
+			<artifactId>cucumber-java</artifactId>
+			<version>${cucumber.version}</version>
+			<scope>test</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>io.cucumber</groupId>
+			<artifactId>cucumber-testng</artifactId>
+			<version>${cucumber.version}</version>
+			<scope>test</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>io.rest-assured</groupId>
+			<artifactId>rest-assured</artifactId>
+			<version>${restassured.version}</version>
+			<scope>test</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>io.rest-assured</groupId>
+			<artifactId>json-path</artifactId>
+			<version>${restassured.version}</version>
+			<scope>test</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>io.rest-assured</groupId>
+			<artifactId>xml-path</artifactId>
+			<version>${restassured.version}</version>
+			<scope>test</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-databind</artifactId>
+			<version>${jackson.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.networknt</groupId>
+			<artifactId>json-schema-validator</artifactId>
+			<version>${json.schema.validator.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.apache.logging.log4j</groupId>
+			<artifactId>log4j-api</artifactId>
+			<version>${log4j.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.apache.logging.log4j</groupId>
+			<artifactId>log4j-core</artifactId>
+			<version>${log4j.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.aventstack</groupId>
+			<artifactId>extentreports</artifactId>
+			<version>${extentreports.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>commons-io</groupId>
+			<artifactId>commons-io</artifactId>
+			<version>${commons-io.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-lang3</artifactId>
+			<version>${commons-lang3.version}</version>
+		</dependency>
+
+	</dependencies>
+
+	<build>
+		<plugins>
+
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>${maven-compiler-plugin.version}</version>
+				<configuration>
+					<source>${maven.compiler.source}</source>
+					<target>${maven.compiler.target}</target>
+				</configuration>
+			</plugin>
+
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-enforcer-plugin</artifactId>
+				<version>${maven-enforcer-plugin.version}</version>
+				<executions>
+					<execution>
+						<id>enforce-java-and-maven</id>
+						<phase>validate</phase>
+						<goals>
+							<goal>enforce</goal>
+						</goals>
+						<configuration>
+							<rules>
+								<requireMavenVersion>
+									<version>[3.8.0,)</version>
+								</requireMavenVersion>
+								<requireJavaVersion>
+									<version>[11,)</version>
+								</requireJavaVersion>
+							</rules>
+							<fail>true</fail>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<version>${maven-surefire-plugin.version}</version>
+				<configuration>
+					<suiteXmlFiles>
+						<suiteXmlFile>testng.xml</suiteXmlFile>
+					</suiteXmlFiles>
+
+					<reportsDirectory>
+						${project.build.directory}/surefire-reports</reportsDirectory>
+					<useFile>true</useFile>
+					<printSummary>true</printSummary>
+					<redirectTestOutputToFile>false</redirectTestOutputToFile>
+					<testFailureIgnore>false</testFailureIgnore>
+
+					<systemPropertyVariables>
+						<env>${env}</env>
+						<browser>${browser}</browser>
+						<headless>${headless}</headless>
+						<execution.mode>${execution.mode}</execution.mode>
+						<selenium.remote.url>${selenium.remote.url}</selenium.remote.url>
+						<thread.count>${thread.count}</thread.count>
+						<data.provider.thread.count>
+							${data.provider.thread.count}</data.provider.thread.count>
+						<parallel.mode>${parallel.mode}</parallel.mode>
+						<retry.enabled>${retry.enabled}</retry.enabled>
+						<retry.count>${retry.count}</retry.count>
+						<startup.validation.enabled>
+							${startup.validation.enabled}</startup.validation.enabled>
+						<startup.validation.timeout.seconds>
+							${startup.validation.timeout.seconds}</startup.validation.timeout.seconds>
+						<cucumber.filter.tags>${cucumber.filter.tags}</cucumber.filter.tags>
+						<cucumber.features>${cucumber.features}</cucumber.features>
+					</systemPropertyVariables>
+				</configuration>
+			</plugin>
+
+		</plugins>
+	</build>
+
+	<profiles>
+
+		<profile>
+			<id>qa</id>
+			<properties>
+				<env>qa</env>
+			</properties>
+		</profile>
+
+		<profile>
+			<id>stage</id>
+			<properties>
+				<env>stage</env>
+			</properties>
+		</profile>
+
+		<profile>
+			<id>dev</id>
+			<properties>
+				<env>dev</env>
+			</properties>
+		</profile>
+
+		<profile>
+			<id>static-analysis</id>
+			<build>
+				<plugins>
+
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-checkstyle-plugin</artifactId>
+						<version>${maven-checkstyle-plugin.version}</version>
+						<executions>
+							<execution>
+								<id>run-checkstyle</id>
+								<phase>validate</phase>
+								<goals>
+									<goal>check</goal>
+								</goals>
+								<configuration>
+									<configLocation>
+										config/checkstyle/checkstyle.xml</configLocation>
+									<suppressionsLocation>
+										config/checkstyle/suppressions.xml</suppressionsLocation>
+									<consoleOutput>true</consoleOutput>
+									<failsOnError>true</failsOnError>
+									<includeTestSourceDirectory>true</includeTestSourceDirectory>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-pmd-plugin</artifactId>
+						<version>${maven-pmd-plugin.version}</version>
+						<executions>
+							<execution>
+								<id>run-pmd</id>
+								<phase>verify</phase>
+								<goals>
+									<goal>check</goal>
+								</goals>
+								<configuration>
+									<rulesets>
+										<ruleset>config/pmd/ruleset.xml</ruleset>
+									</rulesets>
+									<includeTests>true</includeTests>
+									<failOnViolation>true</failOnViolation>
+									<printFailingErrors>true</printFailingErrors>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+
+					<plugin>
+						<groupId>com.github.spotbugs</groupId>
+						<artifactId>spotbugs-maven-plugin</artifactId>
+						<version>${spotbugs-maven-plugin.version}</version>
+						<executions>
+							<execution>
+								<id>run-spotbugs</id>
+								<phase>verify</phase>
+								<goals>
+									<goal>check</goal>
+								</goals>
+								<configuration>
+									<effort>Max</effort>
+									<threshold>High</threshold>
+									<failOnError>true</failOnError>
+									<includeTests>true</includeTests>
+									<xmlOutput>true</xmlOutput>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+
+				</plugins>
+			</build>
+		</profile>
+
+	</profiles>
+
+</project>

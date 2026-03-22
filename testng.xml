@@ -1,0 +1,20 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+
+<suite name="ParaBank Automation Suite">
+
+	<listeners>
+		<listener
+			class-name="com.parabank.automation.listeners.ParallelSuiteListener" />
+		<listener
+			class-name="com.parabank.automation.listeners.RetryTransformer" />
+		<listener class-name="com.parabank.automation.listeners.TestListener" />
+		<listener class-name="com.parabank.automation.listeners.SuiteListener" />
+	</listeners>
+
+	<test name="ParaBank Parallel Tests" preserve-order="false">
+		<classes>
+			<class name="com.parabank.automation.runners.SmokeTestRunner" />
+		</classes>
+	</test>
+
+</suite>

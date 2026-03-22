@@ -1,0 +1,19 @@
+# Maven
+target/
+
+# Test outputs
+test-output/
+
+# OS / IDE
+.DS_Store
+.classpath
+.project
+.settings/
+.idea/
+*.iml
+
+# Logs
+*.log
+
+# Local secrets override
+config/local-secrets.properties
