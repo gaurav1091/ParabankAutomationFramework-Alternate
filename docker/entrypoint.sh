@@ -15,6 +15,11 @@ TEST_RUNNER="${TEST_RUNNER:-com.parabank.automation.runners.SmokeTestRunner}"
 CUCUMBER_FILTER_TAGS="${CUCUMBER_FILTER_TAGS:-}"
 CUCUMBER_FEATURES="${CUCUMBER_FEATURES:-}"
 
+PARABANK_USERNAME="${PARABANK_USERNAME:-}"
+PARABANK_PASSWORD="${PARABANK_PASSWORD:-}"
+BROWSERSTACK_USERNAME="${BROWSERSTACK_USERNAME:-}"
+BROWSERSTACK_ACCESS_KEY="${BROWSERSTACK_ACCESS_KEY:-}"
+
 echo "=================================================="
 echo "Docker Test Runner Configuration"
 echo "TEST_ENV=$TEST_ENV"
@@ -30,6 +35,10 @@ echo "RETRY_COUNT=$RETRY_COUNT"
 echo "TEST_RUNNER=$TEST_RUNNER"
 echo "CUCUMBER_FILTER_TAGS=$CUCUMBER_FILTER_TAGS"
 echo "CUCUMBER_FEATURES=$CUCUMBER_FEATURES"
+echo "PARABANK_USERNAME provided: $([[ -n "$PARABANK_USERNAME" ]] && echo yes || echo no)"
+echo "PARABANK_PASSWORD provided: $([[ -n "$PARABANK_PASSWORD" ]] && echo yes || echo no)"
+echo "BROWSERSTACK_USERNAME provided: $([[ -n "$BROWSERSTACK_USERNAME" ]] && echo yes || echo no)"
+echo "BROWSERSTACK_ACCESS_KEY provided: $([[ -n "$BROWSERSTACK_ACCESS_KEY" ]] && echo yes || echo no)"
 echo "=================================================="
 
 STATUS_URL="${SELENIUM_REMOTE_URL%/wd/hub}/status"
@@ -67,6 +76,22 @@ MVN_CMD=(
   "-Dretry.count=${RETRY_COUNT}"
   "-Dtest=${TEST_RUNNER}"
 )
+
+if [ -n "$PARABANK_USERNAME" ]; then
+  MVN_CMD+=("-Dapp.username=${PARABANK_USERNAME}")
+fi
+
+if [ -n "$PARABANK_PASSWORD" ]; then
+  MVN_CMD+=("-Dapp.password=${PARABANK_PASSWORD}")
+fi
+
+if [ -n "$BROWSERSTACK_USERNAME" ]; then
+  MVN_CMD+=("-Dbrowserstack.username=${BROWSERSTACK_USERNAME}")
+fi
+
+if [ -n "$BROWSERSTACK_ACCESS_KEY" ]; then
+  MVN_CMD+=("-Dbrowserstack.access.key=${BROWSERSTACK_ACCESS_KEY}")
+fi
 
 if [ -n "$CUCUMBER_FILTER_TAGS" ]; then
   MVN_CMD+=("-Dcucumber.filter.tags=${CUCUMBER_FILTER_TAGS}")
