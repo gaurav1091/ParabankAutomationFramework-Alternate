@@ -368,6 +368,33 @@ jobs:
           java-version: "11"
           cache: maven
 
+      - name: Validate Parabank secrets
+        shell: bash
+        env:
+          PARABANK_USERNAME: ${{ secrets.PARABANK_USERNAME }}
+          PARABANK_PASSWORD: ${{ secrets.PARABANK_PASSWORD }}
+        run: |
+          if [[ -z "${PARABANK_USERNAME}" || -z "${PARABANK_PASSWORD}" ]]; then
+            echo "Missing required repository secrets for Parabank login."
+            echo "Please add PARABANK_USERNAME and PARABANK_PASSWORD under:"
+            echo "Repository -> Settings -> Secrets and variables -> Actions"
+            exit 1
+          fi
+
+      - name: Validate BrowserStack secrets
+        if: ${{ needs.prepare.outputs.remote_provider == 'browserstack' }}
+        shell: bash
+        env:
+          BROWSERSTACK_USERNAME: ${{ secrets.BROWSERSTACK_USERNAME }}
+          BROWSERSTACK_ACCESS_KEY: ${{ secrets.BROWSERSTACK_ACCESS_KEY }}
+        run: |
+          if [[ -z "${BROWSERSTACK_USERNAME}" || -z "${BROWSERSTACK_ACCESS_KEY}" ]]; then
+            echo "Missing required BrowserStack repository secrets."
+            echo "Please add BROWSERSTACK_USERNAME and BROWSERSTACK_ACCESS_KEY under:"
+            echo "Repository -> Settings -> Secrets and variables -> Actions"
+            exit 1
+          fi
+
       - name: Validate Selenium Grid browser choice on GitHub-hosted runner
         if: ${{ needs.prepare.outputs.remote_provider == 'selenium-grid' && matrix.browser == 'edge' }}
         shell: bash
@@ -497,6 +524,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Clean previous artifacts
+        shell: bash
+        run: rm -rf pages-site downloaded-framework-reports || true
+
       - name: Download framework report artifacts
         uses: actions/download-artifact@v4
         with:
@@ -520,11 +551,14 @@ jobs:
 
           SITE_DIR="pages-site"
           REPORT_ROOT="$SITE_DIR/reports"
+          RUN_ROOT="$REPORT_ROOT/run-${GITHUB_RUN_NUMBER}"
 
-          mkdir -p "$REPORT_ROOT"
+          mkdir -p "$RUN_ROOT"
           touch "$SITE_DIR/.nojekyll"
 
           FOUND_REPORTS="false"
+          : > "$SITE_DIR/cards.html"
+          : > "$RUN_ROOT/cards.html"
 
           shopt -s nullglob
 
@@ -540,7 +574,10 @@ jobs:
               source_root="$artifact_dir/test-output"
             fi
 
-            target_dir="$REPORT_ROOT/$artifact_name"
+            browser_name="${artifact_name##*-}"
+            browser_display="$(tr '[:lower:]' '[:upper:]' <<< "${browser_name:0:1}")${browser_name:1}"
+
+            target_dir="$RUN_ROOT/$browser_name"
             mkdir -p "$target_dir"
 
             if [[ -d "$source_root/reports" ]]; then
@@ -566,6 +603,54 @@ jobs:
             if compgen -G "$target_dir/reports/ExtentReport*.html" > /dev/null; then
               FOUND_REPORTS="true"
             fi
+
+            {
+              echo "<div class=\"card\">"
+              echo "<h2>Browser: ${browser_display} | Suite: ${{ needs.prepare.outputs.suite }}</h2>"
+              echo "<div class=\"meta\">Artifact: ${artifact_name}</div>"
+              echo "<ul>"
+
+              if [[ -f "$target_dir/reports/ExtentReport_Latest.html" ]]; then
+                echo "<li><a href=\"reports/run-${GITHUB_RUN_NUMBER}/${browser_name}/reports/ExtentReport_Latest.html\">Open Extent latest report</a></li>"
+              fi
+
+              latest_timestamped="$(find "$target_dir/reports" -maxdepth 1 -name 'ExtentReport_*.html' ! -name 'ExtentReport_Latest.html' | sort | tail -n 1 || true)"
+              if [[ -n "$latest_timestamped" ]]; then
+                latest_file="$(basename "$latest_timestamped")"
+                echo "<li><a href=\"reports/run-${GITHUB_RUN_NUMBER}/${browser_name}/reports/${latest_file}\">Open latest timestamped Extent report</a></li>"
+              fi
+
+              if [[ -f "$target_dir/cucumber/cucumber.html" ]]; then
+                echo "<li><a href=\"reports/run-${GITHUB_RUN_NUMBER}/${browser_name}/cucumber/cucumber.html\">Open Cucumber HTML report</a></li>"
+              fi
+
+              echo "</ul>"
+              echo "</div>"
+            } >> "$SITE_DIR/cards.html"
+
+            {
+              echo "<div class=\"card\">"
+              echo "<h2>Browser: ${browser_display}</h2>"
+              echo "<div class=\"meta\">Artifact: ${artifact_name}</div>"
+              echo "<ul>"
+
+              if [[ -f "$target_dir/reports/ExtentReport_Latest.html" ]]; then
+                echo "<li><a href=\"${browser_name}/reports/ExtentReport_Latest.html\">Open Extent latest report</a></li>"
+              fi
+
+              latest_timestamped="$(find "$target_dir/reports" -maxdepth 1 -name 'ExtentReport_*.html' ! -name 'ExtentReport_Latest.html' | sort | tail -n 1 || true)"
+              if [[ -n "$latest_timestamped" ]]; then
+                latest_file="$(basename "$latest_timestamped")"
+                echo "<li><a href=\"${browser_name}/reports/${latest_file}\">Open latest timestamped Extent report</a></li>"
+              fi
+
+              if [[ -f "$target_dir/cucumber/cucumber.html" ]]; then
+                echo "<li><a href=\"${browser_name}/cucumber/cucumber.html\">Open Cucumber HTML report</a></li>"
+              fi
+
+              echo "</ul>"
+              echo "</div>"
+            } >> "$RUN_ROOT/cards.html"
           done
 
           {
@@ -589,39 +674,9 @@ jobs:
             echo "  <div class=\"meta\">Workflow: ${GITHUB_WORKFLOW} | Run Number: ${GITHUB_RUN_NUMBER} | Suite: ${{ needs.prepare.outputs.suite }} | Generated on: $(date -u '+%Y-%m-%d %H:%M:%S UTC')</div>"
 
             if [[ "$FOUND_REPORTS" == "true" ]]; then
-              for artifact_dir in "$REPORT_ROOT"/*; do
-                if [[ ! -d "$artifact_dir" ]]; then
-                  continue
-                fi
-
-                artifact_name="$(basename "$artifact_dir")"
-                browser_name="${artifact_name##*-}"
-                suite_name="${artifact_name#framework-reports-}"
-                suite_name="${suite_name%-${browser_name}}"
-                browser_display="$(tr '[:lower:]' '[:upper:]' <<< "${browser_name:0:1}")${browser_name:1}"
-
-                echo '  <div class="card">'
-                echo "    <h2>Browser: ${browser_display} | Suite: ${suite_name}</h2>"
-                echo "    <div class=\"meta\">Artifact: ${artifact_name}</div>"
-                echo '    <ul>'
-
-                if [[ -f "$artifact_dir/reports/ExtentReport_Latest.html" ]]; then
-                  echo "      <li><a href=\"reports/${artifact_name}/reports/ExtentReport_Latest.html\">Open Extent latest report</a></li>"
-                fi
-
-                latest_timestamped="$(find "$artifact_dir/reports" -maxdepth 1 -name 'ExtentReport_*.html' ! -name 'ExtentReport_Latest.html' | sort | tail -n 1 || true)"
-                if [[ -n "$latest_timestamped" ]]; then
-                  latest_file="$(basename "$latest_timestamped")"
-                  echo "      <li><a href=\"reports/${artifact_name}/reports/${latest_file}\">Open latest timestamped Extent report</a></li>"
-                fi
-
-                if [[ -f "$artifact_dir/cucumber/cucumber.html" ]]; then
-                  echo "      <li><a href=\"reports/${artifact_name}/cucumber/cucumber.html\">Open Cucumber HTML report</a></li>"
-                fi
-
-                echo '    </ul>'
-                echo '  </div>'
-              done
+              if [[ -f "$SITE_DIR/cards.html" ]]; then
+                cat "$SITE_DIR/cards.html"
+              fi
             else
               echo '  <div class="card"><strong>No framework reports were found for this run.</strong></div>'
             fi
@@ -629,6 +684,39 @@ jobs:
             echo '</body>'
             echo '</html>'
           } > "$SITE_DIR/index.html"
+
+          {
+            echo '<!DOCTYPE html>'
+            echo '<html lang="en">'
+            echo '<head>'
+            echo '  <meta charset="UTF-8">'
+            echo '  <meta name="viewport" content="width=device-width, initial-scale=1.0">'
+            echo '  <title>Parabank Run Reports</title>'
+            echo '  <style>'
+            echo '    body { font-family: Arial, sans-serif; margin: 32px; line-height: 1.5; }'
+            echo '    h1 { margin-bottom: 8px; }'
+            echo '    .meta { color: #555; margin-bottom: 24px; }'
+            echo '    .card { border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin-bottom: 16px; }'
+            echo '    a { text-decoration: none; }'
+            echo '    ul { margin-top: 8px; }'
+            echo '  </style>'
+            echo '</head>'
+            echo '<body>'
+            echo "  <h1>Run ${GITHUB_RUN_NUMBER} Reports</h1>"
+            echo "  <div class=\"meta\">Workflow: ${GITHUB_WORKFLOW} | Suite: ${{ needs.prepare.outputs.suite }} | Generated on: $(date -u '+%Y-%m-%d %H:%M:%S UTC')</div>"
+            echo '  <p><a href="../../index.html">Back to root reports page</a></p>'
+
+            if [[ "$FOUND_REPORTS" == "true" ]]; then
+              if [[ -f "$RUN_ROOT/cards.html" ]]; then
+                cat "$RUN_ROOT/cards.html"
+              fi
+            else
+              echo '  <div class="card"><strong>No framework reports were found for this run.</strong></div>'
+            fi
+
+            echo '</body>'
+            echo '</html>'
+          } > "$RUN_ROOT/index.html"
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
@@ -648,9 +736,22 @@ jobs:
 
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ format('{0}reports/run-{1}/', steps.deployment.outputs.page_url, github.run_number) }}
 
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Publish Pages links to workflow summary
+        shell: bash
+        run: |
+          ROOT_URL="${{ steps.deployment.outputs.page_url }}"
+          RUN_URL="${ROOT_URL}reports/run-${{ github.run_number }}/"
+
+          {
+            echo "## Parabank Reports"
+            echo
+            echo "- Current run report URL: ${RUN_URL}"
+            echo "- Root Pages URL: ${ROOT_URL}"
+          } >> "$GITHUB_STEP_SUMMARY"
