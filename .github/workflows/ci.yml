@@ -595,9 +595,14 @@ jobs:
                 fi
 
                 artifact_name="$(basename "$artifact_dir")"
+                browser_name="${artifact_name##*-}"
+                suite_name="${artifact_name#framework-reports-}"
+                suite_name="${suite_name%-${browser_name}}"
+                browser_display="$(tr '[:lower:]' '[:upper:]' <<< "${browser_name:0:1}")${browser_name:1}"
 
                 echo '  <div class="card">'
-                echo "    <h2>${artifact_name}</h2>"
+                echo "    <h2>Browser: ${browser_display} | Suite: ${suite_name}</h2>"
+                echo "    <div class=\"meta\">Artifact: ${artifact_name}</div>"
                 echo '    <ul>'
 
                 if [[ -f "$artifact_dir/reports/ExtentReport_Latest.html" ]]; then
