@@ -3,7 +3,6 @@ package com.parabank.automation.driver;
 import com.parabank.automation.config.ConfigManager;
 import com.parabank.automation.enums.BrowserType;
 import com.parabank.automation.exceptions.DriverInitializationException;
-import io.github.bonigarcia.wdm.WebDriverManager;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.remote.RemoteWebDriver;
 
@@ -25,15 +24,12 @@ public final class BrowserFactory {
 	private static WebDriver createLocalDriver(BrowserType browserType) {
 		switch (browserType) {
 		case CHROME:
-			WebDriverManager.chromedriver().setup();
 			return new org.openqa.selenium.chrome.ChromeDriver(BrowserOptionsFactory.getChromeOptions());
 
 		case FIREFOX:
-			WebDriverManager.firefoxdriver().setup();
 			return new org.openqa.selenium.firefox.FirefoxDriver(BrowserOptionsFactory.getFirefoxOptions());
 
 		case EDGE:
-			WebDriverManager.edgedriver().setup();
 			return new org.openqa.selenium.edge.EdgeDriver(BrowserOptionsFactory.getEdgeOptions());
 
 		default:
