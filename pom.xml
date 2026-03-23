@@ -8,7 +8,8 @@
 	<artifactId>ParabankAutomationFramework</artifactId>
 	<version>1.0-SNAPSHOT</version>
 	<name>ParabankAutomationFramework</name>
-	<description>Enterprise Selenium Java + Cucumber + TestNG + REST Assured Framework</description>
+	<description>Enterprise Selenium Java + Cucumber + TestNG + REST Assured
+		Framework</description>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -24,7 +25,6 @@
 		<jackson.version>2.18.2</jackson.version>
 		<log4j.version>2.24.3</log4j.version>
 		<extentreports.version>5.1.2</extentreports.version>
-		<webdrivermanager.version>5.9.2</webdrivermanager.version>
 		<commons-io.version>2.17.0</commons-io.version>
 		<commons-lang3.version>3.17.0</commons-lang3.version>
 		<json.schema.validator.version>1.5.6</json.schema.validator.version>
@@ -42,12 +42,6 @@
 			<groupId>org.seleniumhq.selenium</groupId>
 			<artifactId>selenium-java</artifactId>
 			<version>${selenium.version}</version>
-		</dependency>
-
-		<dependency>
-			<groupId>io.github.bonigarcia</groupId>
-			<artifactId>webdrivermanager</artifactId>
-			<version>${webdrivermanager.version}</version>
 		</dependency>
 
 		<dependency>
@@ -182,7 +176,8 @@
 						<suiteXmlFile>testng.xml</suiteXmlFile>
 					</suiteXmlFiles>
 
-					<reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
+					<reportsDirectory>
+						${project.build.directory}/surefire-reports</reportsDirectory>
 					<useFile>true</useFile>
 					<printSummary>true</printSummary>
 					<redirectTestOutputToFile>false</redirectTestOutputToFile>
@@ -201,7 +196,8 @@
 						<browserstack.access.key>${browserstack.access.key}</browserstack.access.key>
 						<browserstack.os>${browserstack.os}</browserstack.os>
 						<browserstack.os.version>${browserstack.os.version}</browserstack.os.version>
-						<browserstack.browser.version>${browserstack.browser.version}</browserstack.browser.version>
+						<browserstack.browser.version>
+							${browserstack.browser.version}</browserstack.browser.version>
 						<browserstack.project.name>${browserstack.project.name}</browserstack.project.name>
 						<browserstack.build.name>${browserstack.build.name}</browserstack.build.name>
 						<browserstack.session.name>${browserstack.session.name}</browserstack.session.name>
@@ -211,12 +207,15 @@
 						<browserstack.console.logs>${browserstack.console.logs}</browserstack.console.logs>
 
 						<thread.count>${thread.count}</thread.count>
-						<data.provider.thread.count>${data.provider.thread.count}</data.provider.thread.count>
+						<data.provider.thread.count>
+							${data.provider.thread.count}</data.provider.thread.count>
 						<parallel.mode>${parallel.mode}</parallel.mode>
 						<retry.enabled>${retry.enabled}</retry.enabled>
 						<retry.count>${retry.count}</retry.count>
-						<startup.validation.enabled>${startup.validation.enabled}</startup.validation.enabled>
-						<startup.validation.timeout.seconds>${startup.validation.timeout.seconds}</startup.validation.timeout.seconds>
+						<startup.validation.enabled>
+							${startup.validation.enabled}</startup.validation.enabled>
+						<startup.validation.timeout.seconds>
+							${startup.validation.timeout.seconds}</startup.validation.timeout.seconds>
 						<cucumber.filter.tags>${cucumber.filter.tags}</cucumber.filter.tags>
 						<cucumber.features>${cucumber.features}</cucumber.features>
 					</systemPropertyVariables>
@@ -263,8 +262,10 @@
 									<goal>check</goal>
 								</goals>
 								<configuration>
-									<configLocation>config/checkstyle/checkstyle.xml</configLocation>
-									<suppressionsLocation>config/checkstyle/suppressions.xml</suppressionsLocation>
+									<configLocation>
+										config/checkstyle/checkstyle.xml</configLocation>
+									<suppressionsLocation>
+										config/checkstyle/suppressions.xml</suppressionsLocation>
 									<consoleOutput>true</consoleOutput>
 									<failsOnError>true</failsOnError>
 									<includeTestSourceDirectory>true</includeTestSourceDirectory>
