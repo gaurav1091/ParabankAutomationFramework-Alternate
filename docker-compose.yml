@@ -38,8 +38,14 @@ services:
       TEST_RUNNER: ${TEST_RUNNER:-com.parabank.automation.runners.SmokeTestRunner}
       CUCUMBER_FILTER_TAGS: ${CUCUMBER_FILTER_TAGS:-}
       CUCUMBER_FEATURES: ${CUCUMBER_FEATURES:-}
+
+      PARABANK_USERNAME: ${PARABANK_USERNAME:-}
+      PARABANK_PASSWORD: ${PARABANK_PASSWORD:-}
+      BROWSERSTACK_USERNAME: ${BROWSERSTACK_USERNAME:-}
+      BROWSERSTACK_ACCESS_KEY: ${BROWSERSTACK_ACCESS_KEY:-}
     volumes:
       - ./test-output/chromium:/app/test-output
+      - ./config:/app/config:ro
 
   test-runner-firefox:
     build:
@@ -64,5 +70,11 @@ services:
       TEST_RUNNER: ${TEST_RUNNER:-com.parabank.automation.runners.SmokeTestRunner}
       CUCUMBER_FILTER_TAGS: ${CUCUMBER_FILTER_TAGS:-}
       CUCUMBER_FEATURES: ${CUCUMBER_FEATURES:-}
+
+      PARABANK_USERNAME: ${PARABANK_USERNAME:-}
+      PARABANK_PASSWORD: ${PARABANK_PASSWORD:-}
+      BROWSERSTACK_USERNAME: ${BROWSERSTACK_USERNAME:-}
+      BROWSERSTACK_ACCESS_KEY: ${BROWSERSTACK_ACCESS_KEY:-}
     volumes:
       - ./test-output/firefox:/app/test-output
+      - ./config:/app/config:ro
